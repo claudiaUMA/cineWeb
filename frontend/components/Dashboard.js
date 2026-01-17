@@ -134,9 +134,10 @@ const API_URL = "https://cineweb-backend.onrender.com"
       <p className="mb-4">Hola, <b>{session?.user?.name}</b> ({session?.user?.email})</p>
 
       {/* --- SECCIÓN DE FORMULARIOS --- */}
+      {/* --- SECCIÓN DE FORMULARIOS (3 COLUMNAS) --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
         
-        {/* Formulario Película */}
+        {/* 1. Formulario Película */}
         <div className="bg-gray-100 p-4 rounded shadow">
           <h2 className="text-xl font-bold mb-4">Nueva Película</h2>
           <form onSubmit={handleCrearPelicula} className="flex flex-col gap-3">
@@ -159,7 +160,7 @@ const API_URL = "https://cineweb-backend.onrender.com"
           </form>
         </div>
 
-        {/* Formulario Sala */}
+        {/* 2. Formulario Sala */}
         <div className="bg-gray-100 p-4 rounded shadow">
           <h2 className="text-xl font-bold mb-4">Nueva Sala</h2>
           <form onSubmit={handleCrearSala} className="flex flex-col gap-3">
@@ -183,6 +184,43 @@ const API_URL = "https://cineweb-backend.onrender.com"
               Registrar Sala
             </button>
           </form>
+        </div>
+
+        {/* 3. ASIGNAR PROYECCIÓN (El que faltaba) */}
+        <div className="bg-purple-50 p-4 rounded shadow border border-purple-200">
+            <h2 className="text-xl font-bold mb-4 text-purple-800">Asignar Proyección</h2>
+            <form onSubmit={handleCrearProyeccion} className="flex flex-col gap-3">
+            <select 
+                className="p-2 border rounded text-black"
+                value={nuevaProyeccion.movie} 
+                onChange={(e) => setNuevaProyeccion({...nuevaProyeccion, movie: e.target.value})} 
+                required
+            >
+                <option value="">Elegir Película...</option>
+                {peliculas.map(p => <option key={p.id} value={p.titulo}>{p.titulo}</option>)}
+            </select>
+
+            <select 
+                className="p-2 border rounded text-black"
+                value={nuevaProyeccion.hall} 
+                onChange={(e) => setNuevaProyeccion({...nuevaProyeccion, hall: e.target.value})} 
+                required
+            >
+                <option value="">Elegir Sala...</option>
+                {salas.map(s => <option key={s.id} value={s.nombre}>{s.nombre}</option>)}
+            </select>
+
+            <input 
+                type="datetime-local" 
+                className="p-2 border rounded text-black"
+                value={nuevaProyeccion.date} 
+                onChange={(e) => setNuevaProyeccion({...nuevaProyeccion, date: e.target.value})} 
+                required 
+            />
+            <button type="submit" className="bg-purple-600 text-white p-2 rounded hover:bg-purple-700">
+                Asignar
+            </button>
+            </form>
         </div>
       </div>
 
