@@ -16,7 +16,7 @@ app = FastAPI()
 # --- CONFIGURACIÓN CORS (Para que el Frontend pueda hablar con esto) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # En producción esto se cambia, pero para el examen déjalo así
+    allow_origins=["*"],  # El asterisco "*" significa: "Deja pasar a todo el mundo"
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
