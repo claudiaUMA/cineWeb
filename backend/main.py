@@ -5,11 +5,10 @@ import requests
 import cloudinary.uploader
 import math
 from datetime import datetime
-from models import Pelicula, Sala, Valoracion, Proyeccion, ProyeccionInput
+from models import Pelicula, Sala, Valoracion, Proyeccion, ProyeccionInput, ValoracionInput
 
 # Importamos nuestras cosas
 from database import peliculas_collection, salas_collection
-from models import Pelicula, Sala, Valoracion, Proyeccion
 from schemas import pelicula_schema, peliculas_schema, sala_schema, salas_schema
 
 app = FastAPI()
@@ -114,6 +113,25 @@ def crear_sala(sala: Sala):
     id_insertado = salas_collection.insert_one(sala.dict()).inserted_id
     return sala_schema(salas_collection.find_one({"_id": id_insertado}))
 
+# --- ENDPOINT: VALORAR PELÍCULA ---
+@app.post("/peliculas/valorar")
+def valorar_pelicula(datos: ValoracionInput):
+    # Creamos el objeto valoración oficial
+    nueva_valoracion = Valoracion(
+        usuario=datos.email_usuario, 
+        puntuacion=datos.puntuacion
+    )
+    
+    # Lo metemos dentro de la película correspondiente
+    resultado = peliculas_collection.update_one(
+        {"titulo": datos.titulo_pelicula},
+        {"$push": {"valoraciones": nueva_valoracion.dict()}}
+    )
+    
+    if resultado.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Película no encontrada")
+    
+    return {"mensaje": "Valoración añadida"}
 # --- ENDPOINT: ASIGNAR PROYECCIÓN (Poner peli en sala) ---
 # --- ENDPOINT: ASIGNAR PROYECCIÓN (Corregido) ---
 @app.post("/proyecciones")
@@ -142,3 +160,4 @@ def asignar_proyeccion(datos: ProyeccionInput):
         raise HTTPException(status_code=404, detail="Sala no encontrada")
     
     return {"mensaje": "Proyección asignada correctamente"}
+
