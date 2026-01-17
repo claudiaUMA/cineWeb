@@ -5,6 +5,7 @@ import requests
 import cloudinary.uploader
 import math
 from datetime import datetime
+from models import Pelicula, Sala, Valoracion, Proyeccion, ProyeccionInput
 
 # Importamos nuestras cosas
 from database import peliculas_collection, salas_collection
@@ -114,14 +115,26 @@ def crear_sala(sala: Sala):
     return sala_schema(salas_collection.find_one({"_id": id_insertado}))
 
 # --- ENDPOINT: ASIGNAR PROYECCIÓN (Poner peli en sala) ---
+# --- ENDPOINT: ASIGNAR PROYECCIÓN (Corregido) ---
 @app.post("/proyecciones")
-def asignar_proyeccion(nombre_sala: str, titulo_pelicula: str, fecha_hora: float):
-    # Creamos la proyección
-    nueva_proyeccion = Proyeccion(pelicula_titulo=titulo_pelicula, timestamp=fecha_hora)
+def asignar_proyeccion(datos: ProyeccionInput):
+    # 1. Convertir la fecha de texto (String) a número (Timestamp)
+    try:
+        # El frontend manda algo como "2025-01-20T18:30"
+        dt_obj = datetime.fromisoformat(datos.fecha_hora)
+        timestamp = dt_obj.timestamp()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido")
+
+    # 2. Crear el objeto Proyección oficial
+    nueva_proyeccion = Proyeccion(
+        pelicula_titulo=datos.titulo_pelicula, 
+        timestamp=timestamp
+    )
     
-    # La metemos dentro de la lista 'proyecciones' de la sala correspondiente
+    # 3. Guardar dentro de la sala
     resultado = salas_collection.update_one(
-        {"nombre": nombre_sala},
+        {"nombre": datos.nombre_sala},
         {"$push": {"proyecciones": nueva_proyeccion.dict()}}
     )
     
