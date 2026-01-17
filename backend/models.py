@@ -31,3 +31,13 @@ class Sala(BaseModel):
     latitud: float = 0.0  # Coordenadas (las calcularemos automáticamente)
     longitud: float = 0.0
     proyecciones: List[Proyeccion] = []  # Lista de pelis en esta sala, empieza vacía
+
+class ProyeccionInput(BaseModel):
+    nombre_sala: str
+    titulo_pelicula: str
+    fecha_hora: str  # Recibiremos fecha como texto del formulario
+
+class ValoracionInput(BaseModel):
+    titulo_pelicula: str
+    email_usuario: str
+    puntuacion: int

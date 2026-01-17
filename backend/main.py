@@ -45,18 +45,38 @@ def obtener_peliculas():
 
 @app.get("/peliculas/buscar/{titulo}")
 def buscar_pelicula(titulo: str):
-    # Buscamos la peli (ignorando mayúsculas/minúsculas)
+    # 1. Buscar la película (Igual que tenías)
     pelicula = peliculas_collection.find_one({"titulo": {"$regex": titulo, "$options": "i"}})
+    
+    # CAMBIO 1: En vez de dar error 404, devolvemos un aviso suave 
+    # para que el Frontend pueda decir "No encontrada" sin colgarse.
     if not pelicula:
-        raise HTTPException(status_code=404, detail="Película no encontrada")
+        return {"encontrado": False}
     
-    # Buscamos en qué salas se proyecta
-    # (Truco: buscamos salas que tengan una proyección con este título)
-    salas = salas_collection.find({"proyecciones.pelicula_titulo": pelicula["titulo"]})
-    
-    resultado = pelicula_schema(pelicula)
-    resultado["salas_donde_se_proyecta"] = salas_schema(salas)
-    return resultado
+    peli_data = pelicula_schema(pelicula)
+
+    # 2. Buscar salas (Igual que tenías)
+    salas_db = salas_collection.find({"proyecciones.pelicula_titulo": peli_data["titulo"]})
+    salas_list = salas_schema(salas_db)
+
+    # CAMBIO 2: EL MÁS IMPORTANTE (Procesar Horarios)
+    # Recorremos las salas para sacar las fechas limpias solo de ESTA película
+    for sala in salas_list:
+        sala["horarios"] = [] # Creamos una lista nueva para guardar las horas legibles
+        
+        # Miramos dentro de las proyecciones de la sala
+        for p in sala.get("proyecciones", []):
+            if p["pelicula_titulo"] == peli_data["titulo"]:
+                # Convertimos el timestamp (número) a fecha legible (texto)
+                fecha_legible = datetime.fromtimestamp(p["timestamp"]).strftime("%Y-%m-%d %H:%M")
+                sala["horarios"].append(fecha_legible)
+
+    # CAMBIO 3: Devolver la estructura exacta que espera tu Dashboard.js
+    return {
+        "encontrado": True,
+        "pelicula": peli_data,
+        "salas": salas_list 
+    }
 
 @app.post("/peliculas")
 async def crear_pelicula(titulo: str = Form(...), imagen: UploadFile = File(None)):

@@ -11,6 +11,15 @@ export default function Dashboard({ session }) {
   const [peliculas, setPeliculas] = useState([])
   const [salas, setSalas] = useState([])
   
+  // ... tus estados anteriores ...
+  
+  // 1. NUEVOS ESTADOS (Añádelos aquí)
+  const [nuevaProyeccion, setNuevaProyeccion] = useState({ movie: "", hall: "", date: "" })
+  const [busqueda, setBusqueda] = useState("")
+  const [resultadoBusqueda, setResultadoBusqueda] = useState(null)
+  const [puntuacion, setPuntuacion] = useState(5)
+  const [salasMapa, setSalasMapa] = useState([]) // Importante para filtrar el mapa
+
   // Estados para los formularios
   const [nuevaPeli, setNuevaPeli] = useState({ titulo: "", imagen: null })
   const [nuevaSala, setNuevaSala] = useState({ nombre: "", direccion: "" })
@@ -30,6 +39,8 @@ const API_URL = "https://cineweb-backend.onrender.com"
       
       const resSalas = await axios.get(`${API_URL}/salas`)
       setSalas(resSalas.data)
+
+      setSalasMapa(resSalas.data)
     } catch (error) {
       console.error("Error cargando datos:", error)
     }
@@ -73,13 +84,57 @@ const API_URL = "https://cineweb-backend.onrender.com"
     }
   }
 
+  // --- 4. ASIGNAR PROYECCIÓN (Añadir esto) ---
+  const handleCrearProyeccion = async (e) => {
+    e.preventDefault()
+    try {
+      await axios.post(`${API_URL}/proyecciones`, {
+        nombre_sala: nuevaProyeccion.hall,
+        titulo_pelicula: nuevaProyeccion.movie,
+        fecha_hora: nuevaProyeccion.date
+      })
+      alert("¡Proyección asignada correctamente!")
+      setNuevaProyeccion({ movie: "", hall: "", date: "" })
+    } catch (error) { alert("Error asignando proyección") }
+  }
+
+  // --- 5. BUSCAR PELÍCULA Y ACTUALIZAR MAPA (Añadir esto) ---
+  const handleBuscar = async (e) => {
+    e.preventDefault()
+    if (!busqueda) return
+    try {
+      const res = await axios.get(`${API_URL}/peliculas/buscar/${busqueda}`)
+      if (res.data.encontrado) {
+        setResultadoBusqueda(res.data)
+        // AQUÍ ESTÁ EL TRUCO: Solo pasamos al mapa las salas donde echan la peli
+        setSalasMapa(res.data.salas) 
+      } else {
+        alert("Película no encontrada")
+        setResultadoBusqueda(null)
+      }
+    } catch (error) { console.error(error) }
+  }
+
+  // --- 6. VALORAR PELÍCULA (Añadir esto) ---
+  const handleValorar = async () => {
+    if (!resultadoBusqueda) return
+    try {
+      await axios.post(`${API_URL}/peliculas/valorar`, {
+        titulo_pelicula: resultadoBusqueda.pelicula.titulo,
+        email_usuario: session?.user?.email,
+        puntuacion: parseInt(puntuacion)
+      })
+      alert("¡Valoración enviada!")
+    } catch (error) { alert("Error al valorar") }
+  }
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold mb-6">🎬 CineWeb Manager</h1>
       <p className="mb-4">Hola, <b>{session?.user?.name}</b> ({session?.user?.email})</p>
 
       {/* --- SECCIÓN DE FORMULARIOS --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
         
         {/* Formulario Película */}
         <div className="bg-gray-100 p-4 rounded shadow">
@@ -132,9 +187,74 @@ const API_URL = "https://cineweb-backend.onrender.com"
       </div>
 
       {/* --- MAPA --- */}
-      <div className="mb-10">
-        <h2 className="text-2xl font-bold mb-4">🗺️ Mapa de Salas</h2>
-        <Mapa salas={salas} />
+      {/* --- NUEVA ZONA: BUSCADOR Y MAPA --- */}
+      <div className="mb-10 p-6 border rounded-xl bg-blue-50">
+        <h2 className="text-2xl font-bold mb-4">🔍 Buscar Película y Cartelera</h2>
+        
+        {/* Barra de Búsqueda */}
+        <div className="flex gap-2 mb-6">
+          <input 
+            type="text" 
+            placeholder="Escribe el nombre de la película..." 
+            className="flex-1 p-3 border rounded text-black"
+            value={busqueda} 
+            onChange={(e) => setBusqueda(e.target.value)} 
+          />
+          <button onClick={handleBuscar} className="bg-blue-600 text-white px-6 rounded font-bold">
+            BUSCAR
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* El Mapa ahora usa 'salasMapa' en vez de 'salas' */}
+          <div className="h-96 w-full border rounded overflow-hidden bg-white">
+             <Mapa salas={salasMapa} />
+          </div>
+
+          {/* Resultados y Valoración */}
+          <div className="bg-white p-4 rounded shadow h-96 overflow-y-auto">
+            {!resultadoBusqueda ? (
+              <p className="text-gray-500 mt-10 text-center">Busca una película para ver horarios y mapa.</p>
+            ) : (
+              <div>
+                <h2 className="text-2xl font-bold text-blue-800">{resultadoBusqueda.pelicula.titulo}</h2>
+                
+                {/* Sistema de Valoración */}
+                <div className="my-4 p-3 bg-yellow-50 rounded border border-yellow-200 flex items-center gap-2">
+                  <span className="font-bold text-yellow-700">Valorar:</span>
+                  <select 
+                    value={puntuacion} 
+                    onChange={(e) => setPuntuacion(e.target.value)} 
+                    className="border p-1 rounded text-black"
+                  >
+                    <option value="5">5 ⭐ Excelente</option>
+                    <option value="4">4 ⭐ Muy buena</option>
+                    <option value="3">3 ⭐ Normal</option>
+                    <option value="2">2 ⭐ Regular</option>
+                    <option value="1">1 ⭐ Mala</option>
+                  </select>
+                  <button onClick={handleValorar} className="bg-yellow-500 text-white px-3 py-1 rounded text-sm">
+                    Enviar
+                  </button>
+                </div>
+
+                {/* Lista de horarios */}
+                <h3 className="font-bold border-b pb-2 mb-2">Horarios de Proyección:</h3>
+                <ul className="space-y-3 text-sm">
+                  {resultadoBusqueda.salas.map(s => (
+                    <li key={s.id} className="bg-gray-50 p-2 rounded">
+                      <div className="font-bold">📍 {s.nombre}</div>
+                      <div className="text-gray-600 mb-1">{s.direccion}</div>
+                      <div className="text-blue-600 font-mono">
+                        {s.horarios && s.horarios.join(" | ")}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* --- LISTAS DE DATOS --- */}
